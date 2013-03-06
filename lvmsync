@@ -17,7 +17,7 @@ def main()
 	OptionParser.new do |opts|
 		opts.banner = "Usage: lvmsync [options]"
 		opts.separator ""
-		opts.separator "    lvmsync [--origin <source device>] <snapshot device> [--stdout | [--snapback <file>] [<desthost>:]<destdevice>]"
+		opts.separator "    lvmsync [--origin <source device>] <snapshot device> [--stdout | [--snapback <file>] [--identity <file>] [<desthost>:]<destdevice>]"
 		opts.separator "    lvmsync [--snapback <file>] --apply <changes file> <destdevice>"
 		opts.separator ""
 		
@@ -41,8 +41,11 @@ def main()
 		opts.on("-s", "--stdout", "Write output data to stdout rather than another lvmsync process") do |v|
 			options[:stdout] = true
 		end
+		opts.on("--identity <file>") do |v| 
+			options[:identity] = v
+		end
 	end.parse!
-	
+
 	if options[:apply]
 		if ARGV[0].nil?
 			$stderr.puts "No destination device specified."
@@ -75,7 +78,6 @@ def main()
 			options[:desthost] = host
 			options[:destdev] = dev
 		end
-
 		run_client(options)
 	end
 end
@@ -203,8 +205,11 @@ def run_client(opts)
 	if opts[:stdout]
 		outfd = $stdout
 	else
+		if opts[:identity] != "" then 
+			opts[:identity] = " -i #{opts[:identity]}"
+		end
 		server_cmd = if desthost
-			"ssh #{desthost} lvmsync --apply - #{snapback} #{destdev}"
+			"ssh#{opts[:identity]} #{desthost} lvmsync --apply - #{snapback} #{destdev}"
 		else
 			"lvmsync --apply - #{snapback} #{destdev}"
 		end
