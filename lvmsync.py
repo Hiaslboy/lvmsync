@@ -111,6 +111,21 @@ def run_server(opts):
 	else:
 		process_dumpdata(sys.stdin, destdev, None)
 
+def run_apply(opts):
+	snapfile = opts.snapfile
+	device = opts.device
+
+	snapfd = open(snapfile, 'r')
+	try:
+		handshake = snapfd.readline().strip()
+		if handshake != PROTOCOL_VERSION:
+			print >> sys.stderr, "Handshake failed; protocol mismatch? (saw '%s' expected '%s'" % (handshake, PROTOCOL_VERSION)
+			sys.exit(1)
+
+		process_dumpdata(snapfd, device, None)
+	finally:
+		snapfd.close()
+
 def process_dumpdata(instream, destdev, snapback = None):
 	# check of protocol already done while opening stream
 	dest = open(destdev, 'w+')
@@ -236,21 +251,6 @@ def run_client(opts):
 
 	if not opts.quiet: print "Transferred %d of %d chunks (%d bytes per chunk)" % (xfer_count, total_size, chunksize)
 	if not opts.quiet: print "You saved %f%% of your transfer size!" % ((total_size - xfer_count) / float(total_size) * 100, )
-
-def run_apply(opts):
-	snapfile = opts.snapfile
-	device = opts.device
-
-	snapfd = open(snapfile, 'r')
-	try:
-		handshake = snapfd.readline().strip()
-		if handshake != PROTOCOL_VERSION:
-			print >> sys.stderr, "Handshake failed; protocol mismatch? (saw '%s' expected '%s'" % (handshake, PROTOCOL_VERSION)
-			sys.exit(1)
-
-		process_dumpdata(snapfd, device, None)
-	finally:
-		snapfd.close()
 
 
 # Call dmsetup ls and turn that into a hash of dm_name => [maj, min] data.
