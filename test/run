@@ -26,7 +26,7 @@ fi
 
 # We'll be nice and pick the VG with the largest free space.
 VG="$(vgs --noheadings -o vg_name --sort -vg_free | sed 's/ //g')"
-
+PATH="$PATH:$(dirname $0)/.."
 if [ -z "$VG" ]; then
 	cat <<EOF >&2
 No Volume Groups found.  You must run this test suite on a machine that is
