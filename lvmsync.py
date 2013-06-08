@@ -18,6 +18,7 @@ def main():
 	parser.add_option('-v', '--verbose', action='store_true', dest='verbose', default=False, help="Run verbosely")
 	parser.add_option('--server', action='store_true', dest='server', default=False, help="Run in server mode (not intended for interactive use)")
 	parser.add_option('-b', '--snapback', dest='snapback', help="Make a backup snapshot file on the destination")
+	parser.add_option('-o', '--origin', dest='origin', help="Specify alternative origin where source should be read from (not snapshot parent)")
 	parser.add_option('-a', '--apply', action='store_true', dest='apply', default=False, help="Apply mode: write the contents of a snapback file to a device")
 	parser.add_option('-p', '--patch', action='store_true', dest='patch', default=False, help= "Patch mode: create a patch file that can be applied to the destdevice later via apply mode")
 	parser.add_option('-s', '--stdout', action='store_true', dest='stdout', default=False, help= "Write output data to stdout rather than another lvmsync process")
@@ -142,6 +143,7 @@ def run_client(opts):
 	snapshot = opts.snapdev
 	remotehost = opts.desthost
 	remotedev = opts.destdev
+	origin = opts.origin
 
 	snapshotdm = canonicalise_dm(snapshot)
 
@@ -156,8 +158,22 @@ def run_client(opts):
 	if dmtable[snapshotdm][0]['type'] != 'snapshot':
 		print >> sys.stderr, "%s does not appear to be a snapshot" % (snapshot, )
 		sys.exit(1)
+	if not origin:
+		origindm = dm_from_devnum(dmtable[snapshotdm][0]['args'][0], dmlist)
+	else:
+		origindm = canonicalise_dm(origin)
+		if origindm not in dmlist:
+			print >> sys.stderr, "origin: Could not find dm device '%s' (name mangled to '%s')" % (origin, origindm)
+			sys.exit(1)
+		if dmtable[origindm][0]['type'] != 'snapshot':
+			print >> sys.stderr, "origin: %s does not appear to be a snapshot" % (origin, )
+			sys.exit(1)
+		if dm_from_devnum(dmtable[snapshotdm][0]['args'][0], dmlist)!=dm_from_devnum(dmtable[origindm][0]['args'][0], dmlist):
+			print >> sys.stderr, "origin: %s and %s do not have the same parent" % (snapshot, origin,)
+			print >> sys.stderr, dm_from_devnum(dmtable[snapshotdm][0]['args'][0], dmlist)
+			print >> sys.stderr, dm_from_devnum(dmtable[origindm][0]['args'][0], dmlist)
+			sys.exit(1)
 
-	origindm = dm_from_devnum(dmtable[snapshotdm][0]['args'][0], dmlist)
 
 	if not origindm:
 		print >> sys.stderr, "CAN'T HAPPEN: No origin device for %s found" % (snapshot, )

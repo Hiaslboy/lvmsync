@@ -1,11 +1,14 @@
 trap "lvremove -f $VG/__lvmsynctest_src || true;
       lvremove -f $VG/__lvmsynctest_dest || true;
+      lvremove -f $VG/__lvmsynctest_destpy || true;
       lvremove -f $VG/__lvmsynctest_snap1 || true;
       lvremove -f $VG/__lvmsynctest_snap2 || true;
+      rm -f $HERE/,,snapshot_data_filepy || true;
       rm -f $HERE/,,snapshot_data_file || true" EXIT
 
 lvcreate -l 5 -n __lvmsynctest_src $VG
 lvcreate -l 5 -n __lvmsynctest_dest $VG
+lvcreate -l 5 -n __lvmsynctest_destpy $VG
 
 # Fill src with gibberish
 dd if=/dev/urandom of=/dev/$VG/__lvmsynctest_src bs=1M || true
@@ -15,6 +18,7 @@ lvcreate --snapshot $VG/__lvmsynctest_src -l 5 -n __lvmsynctest_snap1
 
 # Initial copy
 dd if=/dev/$VG/__lvmsynctest_src of=/dev/$VG/__lvmsynctest_dest bs=1M
+dd if=/dev/$VG/__lvmsynctest_src of=/dev/$VG/__lvmsynctest_destpy bs=1M
 
 # Write in some gibberish at intervals across the LV
 i=0
@@ -33,29 +37,44 @@ done
 
 # Now lvmsync -- dump to a file
 lvmsync /dev/$VG/__lvmsynctest_snap1 -o /dev/$VG/__lvmsynctest_snap2 /dev/$VG/__lvmsynctest_dest --stdout >$HERE/,,snapshot_data_file || true
+lvmsync.py /dev/$VG/__lvmsynctest_snap1 -o /dev/$VG/__lvmsynctest_snap2 /dev/$VG/__lvmsynctest_destpy --stdout >$HERE/,,snapshot_data_filepy || true
 
 # Apply from the file
 lvmsync --apply $HERE/,,snapshot_data_file /dev/$VG/__lvmsynctest_dest
+lvmsync.py --apply $HERE/,,snapshot_data_filepy /dev/$VG/__lvmsynctest_destpy
 
 # Verify that our source and dest are now equal
 SRCSUM="$(md5sum </dev/$VG/__lvmsynctest_src)"
 SRCSNAP1="$(md5sum </dev/$VG/__lvmsynctest_snap1)"
 SRCSNAP2="$(md5sum </dev/$VG/__lvmsynctest_snap2)"
 DESTSUM="$(md5sum </dev/$VG/__lvmsynctest_dest)"
+DESTSUMPY="$(md5sum </dev/$VG/__lvmsynctest_destpy)"
+SNAP="$(md5sum <$HERE/,,snapshot_data_file)"
+SNAPPY="$(md5sum <$HERE/,,snapshot_data_filepy)"
 
 # Cleanup
 lvremove -f $VG/__lvmsynctest_snap1
 lvremove -f $VG/__lvmsynctest_snap2
+lvremove -f $VG/__lvmsynctest_destpy
 lvremove -f $VG/__lvmsynctest_src
+rm -f $HERE/,,snapshot_data_filepy
 rm -f $HERE/,,snapshot_data_file
 
 trap "" EXIT
 
 # Make sure test succeeded
+if [ "$SNAP" != "$SNAPPY" ]; then
+	echo "FAIL: 10complex_sync_via_snapshot_file: snapshot mismatch"
+	exit 1
+fi
 	
+if [ "$DESTSUMPY" != "$DESTSUM" ]; then
+	echo "FAIL: 10complex_sync_via_snapshot_file: implementation mismatch"
+	exit 1
+fi
 
-if [ "$SRCSNAP2" != "$DESTSUM" ]; then
-	echo "FAIL: 10complex_sync_via_snapshot_file $SRCSUM $SRCSNAP1 $SRCSNAP2 $DESTSUM"
+if [ "$SRCSNAP2" != "$DESTSUMPY" ]; then
+	echo "FAIL: 10complex_sync_via_snapshot_file $SRCSUM $SRCSNAP1 $SRCSNAP2 $DESTSUM $DESTSUMPY"
 	exit 1
 else
 	echo "OK: 10complex_sync_via_snapshot_file"
