@@ -27,14 +27,14 @@ def main():
 
 	if options.apply:
 		if len(args) < 1:
-			print >> sys.stderr, "No snapback file specified."
+			print >> sys.stderr, "No input file specified."
 			sys.exit(1)
 
 		if len(args) < 2:
 			print >> sys.stderr, "No destination device specified."
 			sys.exit(1)
 
-		options.snapfile = args[0]
+		options.infile = args[0]
 		options.device = args[1]
 		run_apply(options)
 
@@ -76,8 +76,9 @@ def main():
 			print >> sys.stderr, "No destination block device specified.  WTF?"
 			sys.exit(1)
 
-		options.destdev = args[0]
-		run_server(options)
+		options.infile = "-"
+		options.device = args[0]
+		run_apply(options)
 	else:
 		if len(args) < 1:
 			print >> sys.stderr, "ERROR: No snapshot specified.  Exiting."
@@ -93,38 +94,31 @@ def main():
 		options.destdev = dev
 		run_client(options)
 
-def run_server(opts):
-	destdev = opts.destdev
-
-	handshake = sys.stdin.readline().strip()
-	if handshake != PROTOCOL_VERSION:
-		print >> sys.stderr, "Handshake failed; protocol mismatch? (saw '%s'' expected '%s'" % (handshake, PROTOCOL_VERSION)
-		sys.exit(1)
-
-	if opts.snapback:
-		snapback = open(opts.snapback, 'w')
-		try:
-			snapback.write( PROTOCOL_VERSION )
-			process_dumpdata(sys.stdin, destdev, snapback)
-		finally:
-			snapback.close()
-	else:
-		process_dumpdata(sys.stdin, destdev, None)
-
 def run_apply(opts):
-	snapfile = opts.snapfile
-	device = opts.device
-
-	snapfd = open(snapfile, 'r')
+	infile = opts.infile
+	destdev = opts.device
+	if infile=='-':
+	   infd=sys.stdin
+	else:
+	   infd = open(infile, 'r')
 	try:
-		handshake = snapfd.readline().strip()
+		handshake = infd.readline().strip()
 		if handshake != PROTOCOL_VERSION:
 			print >> sys.stderr, "Handshake failed; protocol mismatch? (saw '%s' expected '%s'" % (handshake, PROTOCOL_VERSION)
 			sys.exit(1)
 
-		process_dumpdata(snapfd, device, None)
+		if opts.snapback:
+		    snapback = open(opts.snapback, 'w')
+		    try:
+			snapback.write( PROTOCOL_VERSION )
+			process_dumpdata(infd, destdev, snapback)
+		    finally:
+			snapback.close()
+		else:
+		    process_dumpdata(infd, destdev, None)
 	finally:
-		snapfd.close()
+		if infd!=sys.stdin:
+		    infd.close()
 
 def process_dumpdata(instream, destdev, snapback = None):
 	# check of protocol already done while opening stream
