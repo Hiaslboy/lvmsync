@@ -53,11 +53,11 @@ trap "" EXIT
 if [ "$SNAP" != "$SNAPPY" ]; then
 	echo "FAIL: 00simple_local_sync: snapshot mismatch"
 	exit 1
-	
+fi
 if [ "$DESTSUMPY" != "$DESTSUM" ]; then
 	echo "FAIL: 00simple_local_sync: implementation mismatch"
 	exit 1
-
+fi
 if [ "$SRCSUM" != "$DESTSUM" ]; then
 	echo "FAIL: 00simple_local_sync"
 	exit 1
