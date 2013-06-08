@@ -1,9 +1,11 @@
 trap "lvremove -f $VG/__lvmsynctest_src || true;
       lvremove -f $VG/__lvmsynctest_dest || true;
+      lvremove -f $VG/__lvmsynctest_destpy || true;
       lvremove -f $VG/__lvmsynctest_snap || true" EXIT
 
 lvcreate -l 5 -n __lvmsynctest_src $VG
 lvcreate -l 5 -n __lvmsynctest_dest $VG
+lvcreate -l 5 -n __lvmsynctest_destpy $VG
 
 # Fill src with gibberish
 dd if=/dev/urandom of=/dev/$VG/__lvmsynctest_src bs=1M || true
@@ -13,6 +15,7 @@ lvcreate --snapshot $VG/__lvmsynctest_src -l 5 -n __lvmsynctest_snap
 
 # Initial copy
 dd if=/dev/$VG/__lvmsynctest_src of=/dev/$VG/__lvmsynctest_dest bs=1M
+dd if=/dev/$VG/__lvmsynctest_src of=/dev/$VG/__lvmsynctest_destpy bs=1M
 
 # Write in some gibberish at intervals across the LV
 i=0
@@ -22,14 +25,17 @@ done
 
 # Now lvmsync!
 lvmsync /dev/$VG/__lvmsynctest_snap /dev/$VG/__lvmsynctest_dest || true
+lvmsync.py /dev/$VG/__lvmsynctest_snap /dev/$VG/__lvmsynctest_destpy || true
 
 # Verify that our source and dest are now equal
 SRCSUM="$(md5sum </dev/$VG/__lvmsynctest_src)"
 DESTSUM="$(md5sum </dev/$VG/__lvmsynctest_dest)"
+DESTSUMPY="$(md5sum </dev/$VG/__lvmsynctest_destpy)"
 
 # Cleanup
 lvremove -f $VG/__lvmsynctest_snap
 lvremove -f $VG/__lvmsynctest_dest
+lvremove -f $VG/__lvmsynctest_destpy
 lvremove -f $VG/__lvmsynctest_src
 
 trap "" EXIT
@@ -38,6 +44,8 @@ trap "" EXIT
 if [ "$SRCSUM" != "$DESTSUM" ]; then
 	echo "FAIL: 00simple_local_sync"
 	exit 1
+elif [ "$DESTSUMPY" != "$DESTSUM" ]; then
+	echo "FAIL: 00simple_local_sync implementation mismatch"
 else
 	echo "OK: 00simple_local_sync"
 fi
