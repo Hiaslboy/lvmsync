@@ -20,6 +20,7 @@ def main():
 	parser.add_option('-b', '--snapback', dest='snapback', help="Make a backup snapshot file on the destination")
 	parser.add_option('-a', '--apply', action='store_true', dest='apply', default=False, help="Apply mode: write the contents of a snapback file to a device")
 	parser.add_option('-p', '--patch', action='store_true', dest='patch', default=False, help= "Patch mode: create a patch file that can be applied to the destdevice later via apply mode")
+	parser.add_option('-s', '--stdout', action='store_true', dest='stdout', default=False, help= "Write output data to stdout rather than another lvmsync process")
 	parser.add_option('-q', '--quiet', action='store_true', dest='quiet', default=False, help= "Do not output anything except errors")
 
 	(options, args) = parser.parse_args()
@@ -56,6 +57,20 @@ def main():
 			options.verbose = False
 		run_client(options)
 
+	elif options.stdout:
+		if len(args) < 1:
+			print >> sys.stderr, "No snapshot device specified."
+			sys.exit(1)
+
+		options.patchfile = '-'
+		options.desthost = ''
+		options.destdev = ''
+		options.snapdev = args[0]
+
+		options.patch= True
+		options.quiet = True
+		options.verbose = False
+		run_client(options)
 	elif options.server:
 		if len(args) < 1:
 			print >> sys.stderr, "No destination block device specified.  WTF?"
