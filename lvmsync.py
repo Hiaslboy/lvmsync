@@ -8,7 +8,7 @@
 #
 # Python port of the ruby version
 
-import sys, re, commands, struct, time
+import sys, re, commands, struct, time, os
 from optparse import OptionParser
 
 PROTOCOL_VERSION = "lvmsync PROTO[2]"
@@ -97,6 +97,7 @@ def run_server(opts):
 		process_dumpdata(sys.stdin, destdev, None)
 
 def process_dumpdata(instream, destdev, snapback = None):
+	# check of protocol already done while opening stream
 	dest = open(destdev, 'w+')
 	try:
 		while True:
@@ -173,7 +174,7 @@ def run_client(opts):
 		else:
 			remoteserver = open(opts.patchfile, 'w')
 	else:
-		remoteserver = os.popen('lvmsync.py --server %s %s' % (snapback, removedev), 'w')
+		remoteserver = os.popen('lvmsync.py --server %s %s' % (snapback, remotedev), 'w')
 
 	try:
 		remoteserver.write(PROTOCOL_VERSION + "\n")
