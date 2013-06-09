@@ -27,7 +27,6 @@ lvmsync -N localhost:56125 /dev/$VG/__lvmsynctest_snap localhost:/dev/$VG/__lvms
 # Verify that our source and dest are now equal
 SRCSUM="$(md5sum </dev/$VG/__lvmsynctest_src)"
 DESTSUM="$(md5sum </dev/$VG/__lvmsynctest_dest)"
-DESTSUMPY="$(md5sum </dev/$VG/__lvmsynctest_destpy)"
 
 # Cleanup
 lvremove -f $VG/__lvmsynctest_snap
