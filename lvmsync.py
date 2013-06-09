@@ -18,6 +18,7 @@ def main():
 	parser.add_option('-v', '--verbose', action='store_true', dest='verbose', default=False, help="Run verbosely")
 	parser.add_option('--server', action='store_true', dest='server', default=False, help="Run in server mode (not intended for interactive use)")
 	parser.add_option('-b', '--snapback', dest='snapback', help="Make a backup snapshot file on the destination")
+	parser.add_option('-n', '--netcat', dest='netcat', help="Use netcat to transfer data - needs port")
 	parser.add_option('-o', '--origin', dest='origin', help="Specify alternative origin where source should be read from (not snapshot parent)")
 	parser.add_option('-a', '--apply', action='store_true', dest='apply', default=False, help="Apply mode: write the contents of a snapback file to a device")
 	parser.add_option('-p', '--patch', action='store_true', dest='patch', default=False, help= "Patch mode: create a patch file that can be applied to the destdevice later via apply mode")
@@ -144,6 +145,7 @@ def run_client(opts):
 	remotehost = opts.desthost
 	remotedev = opts.destdev
 	origin = opts.origin
+	netcat = opts.netcat
 
 	snapshotdm = canonicalise_dm(snapshot)
 
@@ -207,6 +209,11 @@ def run_client(opts):
 	if opts.snapback: snapback = "--snapback %s" % (opts.snapback, )
 
 	if remotehost:
+		if netcat:
+			netcatserver = os.popen('ssh %s "nc -l %s | lvmsync.py --apply - %s %s"' % (remotehost, netcat, snapback, remotedev), 'w')
+			time.sleep(5)
+			remoteserver = os.popen('netcat %s %s' % (remotehost.split("@")[-1], netcat), 'w')
+		else:
 			remoteserver = os.popen('ssh %s lvmsync.py --apply - %s %s' % (remotehost, snapback, remotedev), 'w')
 	elif opts.patch:
 		if opts.patchfile == '-':
