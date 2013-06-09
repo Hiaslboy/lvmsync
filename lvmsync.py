@@ -207,14 +207,14 @@ def run_client(opts):
 	if opts.snapback: snapback = "--snapback %s" % (opts.snapback, )
 
 	if remotehost:
-		remoteserver = os.popen('ssh %s lvmsync.py --server %s %s' % (remotehost, snapback, remotedev), 'w')
+			remoteserver = os.popen('ssh %s lvmsync.py --apply - %s %s' % (remotehost, snapback, remotedev), 'w')
 	elif opts.patch:
 		if opts.patchfile == '-':
 			remoteserver = sys.stdout
 		else:
 			remoteserver = open(opts.patchfile, 'w')
 	else:
-		remoteserver = os.popen('lvmsync.py --server %s %s' % (snapback, remotedev), 'w')
+		remoteserver = os.popen('lvmsync.py --apply - %s %s' % (snapback, remotedev), 'w')
 
 	try:
 		remoteserver.write(PROTOCOL_VERSION + "\n")
