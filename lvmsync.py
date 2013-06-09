@@ -19,6 +19,7 @@ def main():
 	parser.add_option('--server', action='store_true', dest='server', default=False, help="Run in server mode (not intended for interactive use)")
 	parser.add_option('-b', '--snapback', dest='snapback', help="Make a backup snapshot file on the destination")
 	parser.add_option('-n', '--netcat', dest='netcat', help="Use netcat to transfer data - needs port")
+	parser.add_option('-N', '--reversenetcat', dest='reversenetcat', help="Use netcat to transfer data - needs sourceserver:port")
 	parser.add_option('-o', '--origin', dest='origin', help="Specify alternative origin where source should be read from (not snapshot parent)")
 	parser.add_option('-a', '--apply', action='store_true', dest='apply', default=False, help="Apply mode: write the contents of a snapback file to a device")
 	parser.add_option('-p', '--patch', action='store_true', dest='patch', default=False, help= "Patch mode: create a patch file that can be applied to the destdevice later via apply mode")
@@ -89,11 +90,16 @@ def main():
 		if len(args) < 2:
 			print >> sys.stderr, "No destination specified."
 			sys.exit(1)
-
 		(dev, host) = ('::'+args[1]).rsplit(':', 2)[2:0:-1]
 		options.snapdev = args[0]
 		options.desthost = host
 		options.destdev = dev
+		if options.netcat:
+			options.reversenetcat=None
+		if options.reversenetcat:
+			if options.reversenetcat.find(":")==-1:
+				print >> sys.stderr, "No sourceserver:port defined."
+				sys.exit(1)
 		run_client(options)
 
 def run_apply(opts):
@@ -146,6 +152,7 @@ def run_client(opts):
 	remotedev = opts.destdev
 	origin = opts.origin
 	netcat = opts.netcat
+	reversenetcat = opts.reversenetcat
 
 	snapshotdm = canonicalise_dm(snapshot)
 
@@ -213,6 +220,11 @@ def run_client(opts):
 			netcatserver = os.popen('ssh %s "nc -l %s | lvmsync.py --apply - %s %s"' % (remotehost, netcat, snapback, remotedev), 'w')
 			time.sleep(5)
 			remoteserver = os.popen('netcat %s %s' % (remotehost.split("@")[-1], netcat), 'w')
+		elif reversenetcat:
+			sourceserver,sourceport = reversenetcat.split(":")
+			remoteserver = os.popen('netcat -l  %s' % (sourceport), 'w')
+			time.sleep(5)
+			netcatserver = os.popen('ssh %s "nc %s %s  | lvmsync.py --apply - %s %s"' % (remotehost, sourceserver, sourceport, snapback, remotedev), 'w')
 		else:
 			remoteserver = os.popen('ssh %s lvmsync.py --apply - %s %s' % (remotehost, snapback, remotedev), 'w')
 	elif opts.patch:
