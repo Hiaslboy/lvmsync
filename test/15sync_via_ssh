@@ -17,7 +17,6 @@ lvcreate --snapshot $VG/__lvmsynctest_src -l 5 -n __lvmsynctest_snap
 
 # Initial copy
 dd if=/dev/$VG/__lvmsynctest_src of=/dev/$VG/__lvmsynctest_dest bs=1M
-dd if=/dev/$VG/__lvmsynctest_src of=/dev/$VG/__lvmsynctest_destpy bs=1M
 
 # Write in some gibberish at intervals across the LV
 i=0
