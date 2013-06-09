@@ -2,10 +2,12 @@ if [ "$SSH_TEST_ENABLED" == "1" ]; then
 
 trap "lvremove -f $VG/__lvmsynctest_src || true;
       lvremove -f $VG/__lvmsynctest_dest || true;
+      lvremove -f $VG/__lvmsynctest_destpy || true;
       lvremove -f $VG/__lvmsynctest_snap || true" EXIT
 
 lvcreate -l 5 -n __lvmsynctest_src $VG
 lvcreate -l 5 -n __lvmsynctest_dest $VG
+lvcreate -l 5 -n __lvmsynctest_destpy $VG
 
 # Fill src with gibberish
 dd if=/dev/urandom of=/dev/$VG/__lvmsynctest_src bs=1M || true
@@ -19,6 +21,7 @@ lvcreate --snapshot $VG/__lvmsynctest_src -l 5 -n __lvmsynctest_snap
 
 # Initial copy
 dd if=/dev/$VG/__lvmsynctest_src of=/dev/$VG/__lvmsynctest_dest bs=1M
+dd if=/dev/$VG/__lvmsynctest_src of=/dev/$VG/__lvmsynctest_destpy bs=1M
 
 # Write in some gibberish at intervals across the LV
 i=0
@@ -28,20 +31,27 @@ done
 
 # Now lvmsync -- natcat diff over wire
 lvmsync -n 56123 /dev/$VG/__lvmsynctest_snap localhost:/dev/$VG/__lvmsynctest_dest  || true
+lvmsync.py -n 56124 /dev/$VG/__lvmsynctest_snap localhost:/dev/$VG/__lvmsynctest_destpy || true
 
 # Verify that our source and dest are now equal
 SRCSUM="$(md5sum </dev/$VG/__lvmsynctest_src)"
 DESTSUM="$(md5sum </dev/$VG/__lvmsynctest_dest)"
+DESTSUMPY="$(md5sum </dev/$VG/__lvmsynctest_destpy)"
 
 # Cleanup
 lvremove -f $VG/__lvmsynctest_snap
 lvremove -f $VG/__lvmsynctest_dest
+lvremove -f $VG/__lvmsynctest_destpy
 lvremove -f $VG/__lvmsynctest_src
 
 
 trap "" EXIT
 
 # Make sure test succeeded
+if [ "$DESTSUMPY" != "$DESTSUM" ]; then
+	echo "FAIL: 20_sync_via_netcat: implementation mismatch"
+	exit 1
+fi
 if [ "$SRCSUM" != "$DESTSUM" ]; then
 	echo "FAIL: 20_sync_via_netcat"
 	exit 1
