@@ -2,6 +2,7 @@ trap "lvremove -f $VG/__lvmsynctest_src || true;
       lvremove -f $VG/__lvmsynctest_dest || true;
       lvremove -f $VG/__lvmsynctest_destpy || true;
       lvremove -f $VG/__lvmsynctest_snap || true;
+      rm -f $HERE/,,snapshot_data_filepy || true;
       rm -f $HERE/,,snapshot_data_file || true" EXIT
 
 lvcreate -l 5 -n __lvmsynctest_src $VG

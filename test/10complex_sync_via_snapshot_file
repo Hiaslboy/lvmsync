@@ -55,6 +55,7 @@ SNAPPY="$(md5sum <$HERE/,,snapshot_data_filepy)"
 # Cleanup
 lvremove -f $VG/__lvmsynctest_snap1
 lvremove -f $VG/__lvmsynctest_snap2
+lvremove -f $VG/__lvmsynctest_dest
 lvremove -f $VG/__lvmsynctest_destpy
 lvremove -f $VG/__lvmsynctest_src
 rm -f $HERE/,,snapshot_data_filepy
