@@ -38,6 +38,10 @@ def main()
 		        "Netcat mode: use netcat to pipe data over the wire") do |v|
 			options[:netcat] = v
 		end
+		opts.on("-N", "--reversenetcat <sourcehost:port>",
+		        "Netcat mode: use netcat to pipe data over the wire, port opens on source") do |v|
+			options[:reversenetcat] = v
+		end
 		opts.on("-s", "--stdout", "Write output data to stdout rather than another lvmsync process") do |v|
 			options[:stdout] = true
 		end
@@ -69,6 +73,9 @@ def main()
 		if (options[:stdout].nil? and ARGV[1].nil?)
 			$stderr.puts "No destination specified."
 			exit 1
+		end
+		if options[:netcat]
+			options[:reversenetcat] = nil
 		end
 		if options[:stdout].nil?
 			dev, host = ARGV[1].split(':', 2).reverse
@@ -118,6 +125,9 @@ def run_client(opts)
 	desthost = opts[:desthost]
 	destdev = opts[:destdev]
 	netcat = opts[:netcat]
+	if opts[:reversenetcat]
+		sourcehost, reversenetcat = opts[:reversenetcat].split(":")
+	end
 	outfd = nil
 	
 	snapshotdm = canonicalise_dm(snapshot)
@@ -172,6 +182,8 @@ def run_client(opts)
 	else
 		server_cmd = if desthost and netcat
 			"ssh #{desthost} 'nc -l #{netcat} | lvmsync --apply - #{snapback} #{destdev}'"
+		elsif desthost and reversenetcat
+			"ssh #{desthost} 'nc #{sourcehost} #{reversenetcat} | lvmsync --apply - #{snapback} #{destdev}'"
 		elsif desthost
 			"ssh #{desthost} lvmsync --apply - #{snapback} #{destdev}"
 		else
@@ -183,6 +195,10 @@ def run_client(opts)
 			sleep 2
 			desthostwithoutlogin = desthost.split("@").last
 			outfd = IO.popen("nc #{desthostwithoutlogin} #{netcat}",'w')
+		elsif reversenetcat
+			outfd = IO.popen("nc -l #{reversenetcat}",'w')
+			sleep 2
+			sshfd = IO.popen(server_cmd, 'w')
 		else
 			outfd = IO.popen(server_cmd, 'w')
 		end
