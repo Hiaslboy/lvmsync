@@ -89,7 +89,7 @@ def main():
 			print >> sys.stderr, "No destination specified."
 			sys.exit(1)
 
-		(dev, host) = (':'+args[1]).split(':', 3)[::-1]
+		(dev, host) = ('::'+args[1]).rsplit(':', 2)[2:0:-1]
 		options.snapdev = args[0]
 		options.desthost = host
 		options.destdev = dev
