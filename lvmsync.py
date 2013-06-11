@@ -124,18 +124,23 @@ def run_apply(opts):
 def process_dumpdata(instream, destdev, snapback = None):
 	# check of protocol already done while opening stream
 	dest = open(destdev, 'w+')
+	errorchunk=0
 	try:
 		while True:
 			header = instream.read(12)
 			if not header:
 				break
 			offset, chunksize = struct.unpack("QI", header)[0], struct.unpack(">QI", header)[1]
-			dest.seek (offset * chunksize)
-			if snapback:
-				snapback.write(header)
-				snapback.write(dest.read(chunksize))
-				dest.seek(offset * chunksize)
-			dest.write(instream.read(chunksize))
+			try:
+				dest.seek (offset * chunksize)
+				if snapback:
+					snapback.write(header)
+					snapback.write(dest.read(chunksize))
+					dest.seek(offset * chunksize)
+				dest.write(instream.read(chunksize))
+			except:
+				errorchunk+=1
+				pass
 	finally:
 		dest.close()
 
