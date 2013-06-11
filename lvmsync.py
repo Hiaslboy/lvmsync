@@ -22,6 +22,7 @@ def main():
 	parser.add_option('-v', '--verbose', action='store_true', dest='verbose', default=False, help="Run verbosely")
 	parser.add_option('--server', action='store_true', dest='server', default=False, help="Run in server mode (not intended for interactive use)")
 	parser.add_option('-b', '--snapback', dest='snapback', help="Make a backup snapshot file on the destination")
+	parser.add_option('-i', '--identity', dest='identity', help="provide identity file for ssh")
 	parser.add_option('-o', '--origin', dest='origin', help="Specify alternative origin where source should be read from (not snapshot parent)")
 	parser.add_option('-a', '--apply', action='store_true', dest='apply', default=False, help="Apply mode: write the contents of a snapback file to a device")
 	parser.add_option('-p', '--patch', action='store_true', dest='patch', default=False, help= "Patch mode: create a patch file that can be applied to the destdevice later via apply mode")
@@ -101,6 +102,16 @@ def main():
 			sys.exit(1)
 
 		(dev, host) = ('::'+args[1]).rsplit(':', 2)[2:0:-1]
+		if options.identity:
+			try:
+				fd=open(options.identity,"r")
+				fd.close()
+				options.identity=" -i %s"%options.identity
+			except:
+				options.identity=""
+				print >> sys.stderr, "identity file does not exist, will be ignored."
+		else:
+			options.identity=""
 		options.snapdev = args[0]
 		options.desthost = host
 		options.destdev = dev
@@ -179,6 +190,7 @@ def run_client(opts):
 	remotehost = opts.desthost
 	remotedev = opts.destdev
 	origin = opts.origin
+	identity = opts.identity
 
 	snapshotdm = canonicalise_dm(snapshot)
 
@@ -242,7 +254,7 @@ def run_client(opts):
 	if opts.snapback: snapback = "--snapback %s" % (opts.snapback, )
 
 	if remotehost:
-		remoteserver = os.popen('ssh %s lvmsync.py --server %s %s' % (remotehost, snapback, remotedev), 'w')
+		remoteserver = os.popen('ssh%s %s lvmsync.py --server %s %s' % (identity, remotehost, snapback, remotedev), 'w')
 	elif opts.patch:
 		if opts.patchfile == '-':
 			remoteserver = sys.stdout
