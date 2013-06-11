@@ -56,6 +56,13 @@ def main():
 		if options.patchfile == '-':
 			options.quiet = True
 			options.verbose = False
+		else:
+			try:
+				fd=open(options.patchfile, "w+")
+				fd.close()
+			except:
+				sys.stderr, "Can not open patch file"
+				sys.exit(3)
 		run_client(options)
 
 	elif options.stdout:
@@ -98,33 +105,49 @@ def main():
 def run_apply(opts):
 	infile = opts.infile
 	destdev = opts.device
-	if infile=='-':
-	   infd=sys.stdin
-	else:
-	   infd = open(infile, 'r')
 	try:
+		if infile=='-':
+			infd=sys.stdin
+		else:
+			try:
+				infd = open(infile, 'r')
+			except Exception,e:
+				print >> sys.stderr, "Can not open infile - QUIT"
+				infd=sys.stdin
+				raise e
 		handshake = infd.readline().strip()
 		if handshake != PROTOCOL_VERSION:
 			print >> sys.stderr, "Handshake failed; protocol mismatch? (saw '%s' expected '%s'" % (handshake, PROTOCOL_VERSION)
 			sys.exit(1)
 
 		if opts.snapback:
-		    snapback = open(opts.snapback, 'w')
-		    try:
-			snapback.write( PROTOCOL_VERSION )
-			process_dumpdata(infd, destdev, snapback)
-		    finally:
-			snapback.close()
+			try:
+				snapback = open(opts.snapback, 'w')
+				try:
+					snapback.write( PROTOCOL_VERSION )
+					process_dumpdata(infd, destdev, snapback)
+				finally:
+					snapback.close()
+			except Exception,e:
+				print >> sys.stderr, "Can not write to snapback file - QUIT"
+				raise e
 		else:
 		    process_dumpdata(infd, destdev, None)
+	except Exception,e:
+		print >> sys.stderr, "Failed to write stream to destination device"
 	finally:
 		if infd!=sys.stdin:
-		    infd.close()
+			infd.close()
 
 def process_dumpdata(instream, destdev, snapback = None):
 	# check of protocol already done while opening stream
-	dest = open(destdev, 'w+')
+	try:
+		dest = open(destdev, 'w+')
+	except:
+		print >> sys.stdout, "Destination device %s can not be writen to."%destdev
+		sys.exit(3)
 	errorchunk=0
+	chunk=0
 	try:
 		while True:
 			header = instream.read(12)
@@ -132,6 +155,7 @@ def process_dumpdata(instream, destdev, snapback = None):
 				break
 			offset, chunksize = struct.unpack("QI", header)[0], struct.unpack(">QI", header)[1]
 			try:
+				chunk += 1
 				dest.seek (offset * chunksize)
 				if snapback:
 					snapback.write(header)
@@ -142,6 +166,8 @@ def process_dumpdata(instream, destdev, snapback = None):
 				errorchunk+=1
 				pass
 	finally:
+		if errorchunk:
+			print >> sys.stderr, "WARNING - was not able to write %i of %i chunks(out of bounds?)"%(errorchunk,chunks)
 		dest.close()
 
 def run_client(opts):
@@ -272,7 +298,11 @@ def run_client(opts):
 # Note that maj, min will be integers, and dm_name a string.
 def read_dm_list():
 	dmlist = {}
-	for l in commands.getoutput('dmsetup ls').split('\n'):
+	status, output=commands.getoutput('dmsetup ls')
+	if status:
+		print >> sys.stderr, "lvmsync needs to be run as root"
+		sys.exit(2)
+	for l in output.split('\n'):
 		m = re.search('^(\S+)\s+\((\d+)(, |:)(\d+)\)$', l)
 		if not m:
 			continue
@@ -299,7 +329,11 @@ def read_dm_list():
 #
 def read_dm_table():
 	dmtable = {}
-	for l in commands.getoutput('dmsetup table').split('\n'):
+	status, output=commands.getoutput('dmsetup table')
+	if status:
+		print >> sys.stderr, "lvmsync needs to be run as root"
+		sys.exit(2)
+	for l in output.split('\n'):
 		m = re.search('^(\S+): (\d+) (\d+) (\S+) (.*)$', l)
 		if not m:
 			continue
