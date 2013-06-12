@@ -14,7 +14,11 @@ from optparse import OptionParser
 PROTOCOL_VERSION = "lvmsync PROTO[2]"
 
 def main():
-	parser = OptionParser()
+	usage="""Usage: lvmsync [options]
+	
+    lvmsync [--origin <source device>] <snapshot device> [--stdout | [--snapback <file>] [<desthost>:]<destdevice>]
+    lvmsync [--snapback <file>] --apply <changes file> <destdevice>"""
+	parser = OptionParser(usage=usage)
 	parser.add_option('-v', '--verbose', action='store_true', dest='verbose', default=False, help="Run verbosely")
 	parser.add_option('--server', action='store_true', dest='server', default=False, help="Run in server mode (not intended for interactive use)")
 	parser.add_option('-b', '--snapback', dest='snapback', help="Make a backup snapshot file on the destination")
