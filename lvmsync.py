@@ -16,7 +16,7 @@ PROTOCOL_VERSION = "lvmsync PROTO[2]"
 def main():
 	usage="""Usage: lvmsync [options]
 	
-    lvmsync [--origin <source device>] <snapshot device> [--stdout | [--snapback <file>] [<desthost>:]<destdevice>]
+    lvmsync [--origin <source device>] <snapshot device> [--stdout | [--snapback <file>] [--identity <sshkey>]  [[<user>@]<desthost>:]<destdevice>]
     lvmsync [--snapback <file>] --apply <changes file> <destdevice>"""
 	parser = OptionParser(usage=usage)
 	parser.add_option('-v', '--verbose', action='store_true', dest='verbose', default=False, help="Run verbosely")
